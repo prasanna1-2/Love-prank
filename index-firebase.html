@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Do You Love Me? 💕</title>
+
+<!-- ============================================================ -->
+<!-- Google Fonts -->
+<!-- ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     ROOT VARIABLES — Pink / Red / White romantic palette
+     ============================================================ */
+  :root{
+    --pink-light:#ffe3ec;
+    --pink:#ff8fb1;
+    --pink-deep:#ff5c8a;
+    --red:#ff3860;
+    --red-deep:#e6194b;
+    --white:#fff9fb;
+    --glass-bg: rgba(255,255,255,0.35);
+    --glass-border: rgba(255,255,255,0.55);
+    --text-dark:#6b1030;
+    --shadow-glow: 0 0 25px rgba(255,92,138,0.55);
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    overflow-x:hidden;
+    font-family:'Poppins', sans-serif;
+    color:var(--text-dark);
+  }
+
+  /* ============================================================
+     ANIMATED GRADIENT BACKGROUND
+     ============================================================ */
+  body{
+    min-height:100vh;
+    background: linear-gradient(-45deg, #ffdde6, #ff9fb8, #ff6f91, #ffc2d1);
+    background-size: 400% 400%;
+    animation: gradientShift 14s ease infinite;
+    position:relative;
+  }
+
+  @keyframes gradientShift{
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+  }
+
+  /* Canvas layer for floating hearts (behind everything, non-blocking) */
+  #heartsCanvas{
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    pointer-events:none; z-index:1;
+  }
+
+  /* Confetti canvas (final page only) */
+  #confettiCanvas{
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    pointer-events:none; z-index:9998; display:none;
+  }
+
+  /* ============================================================
+     PAGE / SCREEN LAYOUT
+     ============================================================ */
+  .screen{
+    position:relative;
+    z-index:2;
+    min-height:100vh;
+    width:100%;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    text-align:center;
+    animation: fadeScaleIn 0.7s ease forwards;
+  }
+  .screen.active{ display:flex; }
+
+  @keyframes fadeScaleIn{
+    from{ opacity:0; transform:scale(0.92); }
+    to{ opacity:1; transform:scale(1); }
+  }
+
+  /* ============================================================
+     GLASSMORPHISM CARD
+     ============================================================ */
+  .card{
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 28px;
+    padding: 40px 30px;
+    max-width: 560px;
+    width:100%;
+    box-shadow: 0 8px 32px rgba(230,25,75,0.18);
+    position:relative;
+  }
+
+  .title{
+    font-family:'Dancing Script', cursive;
+    font-weight:700;
+    font-size: clamp(2.2rem, 7vw, 3.4rem);
+    color: var(--red-deep);
+    text-shadow: 0 2px 12px rgba(255,92,138,0.45);
+    margin: 0 0 10px 0;
+  }
+
+  .subtitle{
+    font-size: clamp(0.95rem, 3vw, 1.15rem);
+    color: var(--text-dark);
+    opacity:0.85;
+    margin-bottom: 30px;
+  }
+
+  /* ============================================================
+     BUTTONS
+     ============================================================ */
+  .btn-row{
+    display:flex;
+    gap:22px;
+    justify-content:center;
+    flex-wrap:wrap;
+    position:relative;
+    min-height:90px;
+  }
+
+  .btn{
+    font-family:'Poppins', sans-serif;
+    font-weight:600;
+    font-size: 1.05rem;
+    padding: 16px 34px;
+    border:none;
+    border-radius: 50px;
+    cursor:pointer;
+    color:#fff;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: var(--shadow-glow);
+    user-select:none;
+  }
+
+  .btn-yes{
+    background: linear-gradient(135deg, var(--red), var(--pink-deep));
+    animation: pulseGlow 1.8s ease-in-out infinite;
+  }
+  .btn-yes:hover{ transform: translateY(-3px) scale(1.05); }
+  .btn-yes:active{ transform: scale(0.96); }
+
+  @keyframes pulseGlow{
+    0%,100%{ box-shadow: 0 0 15px rgba(255,92,138,0.55); }
+    50%{ box-shadow: 0 0 35px rgba(255,56,96,0.85); }
+  }
+
+  .btn-no{
+    background: linear-gradient(135deg, #ffb3c6, #ff8fb1);
+    position: relative;
+  }
+
+  /* When the "No" button becomes a runaway, fix it to viewport */
+  .btn-no.runaway{
+    position: fixed;
+    z-index: 50;
+    transition: left 0.28s ease, top 0.28s ease, transform 0.15s ease;
+  }
+
+  /* Funny floating message bubble */
+  .taunt{
+    position: fixed;
+    z-index: 60;
+    background: #fff;
+    color: var(--red-deep);
+    font-weight:600;
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    pointer-events:none;
+    opacity:0;
+    animation: taunt-pop 1.6s ease forwards;
+    white-space: nowrap;
+  }
+  @keyframes taunt-pop{
+    0%{ opacity:0; transform: translateY(10px) scale(0.8); }
+    15%{ opacity:1; transform: translateY(0) scale(1); }
+    80%{ opacity:1; }
+    100%{ opacity:0; transform: translateY(-15px) scale(0.9); }
+  }
+
+  /* ============================================================
+     MUSIC TOGGLE BUTTON
+     ============================================================ */
+  .music-toggle{
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    width: 52px; height:52px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 1.4rem;
+    cursor:pointer;
+    box-shadow: var(--shadow-glow);
+    transition: transform 0.2s ease;
+  }
+  .music-toggle:active{ transform: scale(0.9); }
+
+  /* ============================================================
+     SUCCESS / GIF SECTIONS
+     ============================================================ */
+  .gif-frame{
+    width: 100%;
+    max-width: 320px;
+    border-radius: 20px;
+    overflow:hidden;
+    margin: 18px auto;
+    border: 3px solid #fff;
+    box-shadow: 0 6px 24px rgba(230,25,75,0.3);
+  }
+  .gif-frame img{ width:100%; display:block; }
+
+  .success-msg{
+    font-family:'Dancing Script', cursive;
+    font-weight:700;
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    color: var(--red-deep);
+    margin-top: 14px;
+    min-height: 2.4em;
+  }
+
+  /* Typewriter cursor */
+  .typewriter::after{
+    content:'|';
+    animation: blink 0.8s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .continue-btn{
+    margin-top: 26px;
+    background: linear-gradient(135deg, var(--red), var(--pink-deep));
+    color:#fff;
+    border:none;
+    padding: 14px 36px;
+    border-radius: 50px;
+    font-weight:600;
+    font-size: 1rem;
+    cursor:pointer;
+    box-shadow: var(--shadow-glow);
+    animation: pulseGlow 1.8s ease-in-out infinite;
+  }
+
+  /* ============================================================
+     FORM (Date Invitation)
+     ============================================================ */
+  .form-group{
+    text-align:left;
+    margin-bottom: 16px;
+  }
+  .form-group label{
+    display:block;
+    font-weight:600;
+    font-size:0.9rem;
+    color: var(--red-deep);
+    margin-bottom: 6px;
+  }
+  .form-group input,
+  .form-group textarea{
+    width:100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1.5px solid var(--pink);
+    background: rgba(255,255,255,0.6);
+    font-family:'Poppins', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    outline:none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .form-group input:focus,
+  .form-group textarea:focus{
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(255,56,96,0.2);
+  }
+  .form-group textarea{ resize: vertical; min-height: 70px; }
+  .error-text{
+    color: var(--red-deep);
+    font-size: 0.78rem;
+    margin-top: 4px;
+    min-height: 1em;
+    font-weight:500;
+  }
+
+  .submit-btn{
+    width:100%;
+    margin-top: 10px;
+    background: linear-gradient(135deg, var(--red), var(--pink-deep));
+    color:#fff;
+    border:none;
+    padding: 15px;
+    border-radius: 50px;
+    font-weight:700;
+    font-size: 1.05rem;
+    cursor:pointer;
+    box-shadow: var(--shadow-glow);
+    transition: transform 0.2s ease;
+  }
+  .submit-btn:active{ transform: scale(0.97); }
+  .submit-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+
+  .status-msg{
+    margin-top: 12px;
+    font-size: 0.9rem;
+    font-weight:600;
+    min-height: 1.2em;
+  }
+  .status-msg.error{ color: var(--red-deep); }
+  .status-msg.success{ color: #2a9d5c; }
+
+  /* ============================================================
+     FINAL PAGE
+     ============================================================ */
+  .final-title{
+    font-family:'Dancing Script', cursive;
+    font-weight:700;
+    font-size: clamp(1.8rem, 6vw, 2.6rem);
+    color: var(--red-deep);
+    margin-bottom: 14px;
+  }
+  .final-text{
+    font-size: clamp(1rem, 3.4vw, 1.15rem);
+    line-height: 1.7;
+    margin: 6px 0;
+  }
+
+  /* Small utility */
+  .hidden{ display:none !important; }
+
+  /* Responsive tweaks */
+  @media (max-width: 420px){
+    .card{ padding: 30px 20px; border-radius: 22px; }
+    .btn{ padding: 14px 26px; font-size: 0.95rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Floating hearts background canvas -->
+<canvas id="heartsCanvas"></canvas>
+<!-- Confetti canvas for final celebration -->
+<canvas id="confettiCanvas"></canvas>
+
+<!-- Background music toggle -->
+<button class="music-toggle" id="musicToggle" title="Play/Pause music" aria-label="Toggle background music">🔇</button>
+
+<!-- ============================================================
+     AUDIO ELEMENTS
+     Replace the src links below with your own hosted romantic
+     background music / click sound if desired.
+     ============================================================ -->
+<audio id="bgMusic" loop preload="none">
+  <source src="https://cdn.pixabay.com/download/audio/2022/03/10/audio_1608b3e59b.mp3" type="audio/mpeg">
+</audio>
+<audio id="clickSound" preload="none">
+  <source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3" type="audio/mpeg">
+</audio>
+
+<!-- ============================================================
+     PAGE 1 — LOVE QUESTION
+     ============================================================ -->
+<section class="screen active" id="page1">
+  <div class="card">
+    <h1 class="title">Do you love me? ❤️</h1>
+    <p class="subtitle">Choose wisely... 😉</p>
+    <div class="btn-row" id="btnRow1">
+      <button class="btn btn-yes" id="yesBtn1">💖 Yes</button>
+      <button class="btn btn-no" id="noBtn1">💔 No</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PAGE 1.5 — SUCCESS AFTER "YES" ON LOVE QUESTION
+     ============================================================ -->
+<section class="screen" id="page1success">
+  <div class="card">
+    <div class="gif-frame">
+      <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" alt="Cute romantic celebration">
+    </div>
+    <p class="success-msg typewriter" id="typewriter1"></p>
+    <button class="continue-btn" id="toPage2Btn">Continue 💌</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     PAGE 2 — DATE INVITATION
+     ============================================================ -->
+<section class="screen" id="page2">
+  <div class="card">
+    <h1 class="title" style="font-size:clamp(1.6rem,6vw,2.4rem);">Will you go on a date with me? 🌹</h1>
+    <div class="btn-row" id="btnRow2">
+      <button class="btn btn-yes" id="yesBtn2">💖 Yes</button>
+      <button class="btn btn-no" id="noBtn2">💔 No</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PAGE 3 — ROMANTIC DATE FORM
+     ============================================================ -->
+<section class="screen" id="page3">
+  <div class="card">
+    <h1 class="title" style="font-size:clamp(1.5rem,5.5vw,2.1rem);">Let's plan our date 💕</h1>
+    <p class="subtitle">Fill in the details below</p>
+
+    <form id="dateForm" novalidate>
+      <div class="form-group">
+        <label for="fName">Your Name</label>
+        <input type="text" id="fName" name="fName" placeholder="e.g. Alex" autocomplete="name">
+        <div class="error-text" id="err-fName"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="fDate">Preferred Date</label>
+        <input type="date" id="fDate" name="fDate">
+        <div class="error-text" id="err-fDate"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="fTime">Preferred Time</label>
+        <input type="time" id="fTime" name="fTime">
+        <div class="error-text" id="err-fTime"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="fPlace">Meeting Place</label>
+        <input type="text" id="fPlace" name="fPlace" placeholder="e.g. Our favorite cafe">
+        <div class="error-text" id="err-fPlace"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="fMessage">Message (optional)</label>
+        <textarea id="fMessage" name="fMessage" placeholder="Say something sweet..."></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">Send 💌</button>
+      <div class="status-msg" id="formStatus"></div>
+    </form>
+  </div>
+</section>
+
+<!-- ============================================================
+     FINAL PAGE
+     ============================================================ -->
+<section class="screen" id="pageFinal">
+  <div class="card">
+    <div class="gif-frame">
+      <img src="https://media.giphy.com/media/3o6Zt6ML6BklcajjsA/giphy.gif" alt="Romantic celebration">
+    </div>
+    <h2 class="final-title">❤️ Hope we will meet together soon ❤️</h2>
+    <p class="final-text">Thank you for saying YES!</p>
+    <p class="final-text">I can't wait to see you. 🥰</p>
+  </div>
+</section>
+
+<script>
+/* =====================================================================
+   FIREBASE CONFIGURATION — EDIT THIS SECTION WITH YOUR OWN PROJECT KEYS
+   =====================================================================
+   1. Go to https://console.firebase.google.com
+   2. Create a project -> Add a Web App -> copy the config object below.
+   3. Enable Firestore Database in your Firebase console.
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBxCJJLsZQtlwPyW3gWvl2dO25-eSpOYEg",
+  authDomain: "ff-tournament-app-abcf0.firebaseapp.com",
+  projectId: "ff-tournament-app-abcf0",
+  storageBucket: "ff-tournament-app-abcf0.firebasestorage.app",
+  messagingSenderId: "540293861745",
+  // NOTE: this appId is from an ANDROID app registration (google-services.json),
+  // not a Web app. Firestore writes will still work with it in most cases,
+  // but for a fully correct setup, register a Web app in the Firebase
+  // console (Project settings -> Add app -> Web) and swap in that appId.
+  appId: "1:540293861745:web:116af997333e3a6e43e6d0"
+};
+/* ===================================================================== */
+</script>
+
+<!-- Firebase SDK (compat build, easiest for single-file setups) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =====================================================================
+     INIT FIREBASE (guarded — app still works even if config isn't filled)
+     ===================================================================== */
+  let db = null;
+  try{
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    } else {
+      console.warn("Firebase config not set — form submissions will not be saved. Edit the FIREBASE CONFIGURATION section in index.html.");
+    }
+  } catch(e){
+    console.error("Firebase init error:", e);
+  }
+
+  /* =====================================================================
+     SCREEN NAVIGATION HELPERS
+     ===================================================================== */
+  function showScreen(id){
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    window.scrollTo(0,0);
+  }
+
+  /* =====================================================================
+     FLOATING HEARTS BACKGROUND (canvas particle system)
+     ===================================================================== */
+  const heartsCanvas = document.getElementById("heartsCanvas");
+  const hctx = heartsCanvas.getContext("2d");
+  let hearts = [];
+  let heartsBurstMode = false; // extra dense mode for final page
+
+  function resizeCanvases(){
+    heartsCanvas.width = window.innerWidth;
+    heartsCanvas.height = window.innerHeight;
+    const cc = document.getElementById("confettiCanvas");
+    cc.width = window.innerWidth;
+    cc.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resizeCanvases);
+  resizeCanvases();
+
+  function makeHeart(){
+    return {
+      x: Math.random() * heartsCanvas.width,
+      y: heartsCanvas.height + 20,
+      size: 10 + Math.random() * 20,
+      speed: 0.6 + Math.random() * 1.6,
+      drift: (Math.random() - 0.5) * 1.2,
+      opacity: 0.35 + Math.random() * 0.5,
+      hue: Math.random() > 0.5 ? "#ff5c8a" : "#ff8fb1",
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.03
+    };
+  }
+
+  function drawHeart(ctx, x, y, size, color, opacity, angle){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    const topCurveHeight = size * 0.3;
+    ctx.moveTo(0, topCurveHeight);
+    ctx.bezierCurveTo(0, 0, -size/2, 0, -size/2, topCurveHeight);
+    ctx.bezierCurveTo(-size/2, size*0.7, 0, size*0.9, 0, size*1.2);
+    ctx.bezierCurveTo(0, size*0.9, size/2, size*0.7, size/2, topCurveHeight);
+    ctx.bezierCurveTo(size/2, 0, 0, 0, 0, topCurveHeight);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const HEART_COUNT_BASE = 26;
+  for(let i=0;i<HEART_COUNT_BASE;i++){
+    const h = makeHeart();
+    h.y = Math.random() * heartsCanvas.height; // spread initial positions
+    hearts.push(h);
+  }
+
+  function animateHearts(){
+    hctx.clearRect(0,0,heartsCanvas.width, heartsCanvas.height);
+    const target = heartsBurstMode ? 60 : HEART_COUNT_BASE;
+    while(hearts.length < target) hearts.push(makeHeart());
+    if (hearts.length > target) hearts.length = target;
+
+    hearts.forEach(h => {
+      h.y -= h.speed;
+      h.x += h.drift;
+      h.angle += h.spin;
+      if (h.y < -30){
+        Object.assign(h, makeHeart());
+      }
+      drawHeart(hctx, h.x, h.y, h.size, h.hue, h.opacity, h.angle);
+    });
+    requestAnimationFrame(animateHearts);
+  }
+  animateHearts();
+
+  /* =====================================================================
+     CONFETTI (final page celebration)
+     ===================================================================== */
+  const confettiCanvas = document.getElementById("confettiCanvas");
+  const cctx = confettiCanvas.getContext("2d");
+  let confettiParticles = [];
+  const confettiColors = ["#ff5c8a","#ff8fb1","#ff3860","#ffffff","#ffc2d1"];
+
+  function launchConfetti(){
+    confettiCanvas.style.display = "block";
+    confettiParticles = [];
+    for(let i=0;i<140;i++){
+      confettiParticles.push({
+        x: Math.random() * confettiCanvas.width,
+        y: -20 - Math.random()*confettiCanvas.height*0.5,
+        w: 6 + Math.random()*6,
+        h: 8 + Math.random()*10,
+        color: confettiColors[Math.floor(Math.random()*confettiColors.length)],
+        speedY: 2 + Math.random()*3,
+        speedX: (Math.random()-0.5)*2,
+        rotation: Math.random()*360,
+        rotSpeed: (Math.random()-0.5)*10
+      });
+    }
+    let frames = 0;
+    const maxFrames = 380;
+    function tick(){
+      frames++;
+      cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+      confettiParticles.forEach(p => {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotation += p.rotSpeed;
+        cctx.save();
+        cctx.translate(p.x, p.y);
+        cctx.rotate(p.rotation * Math.PI/180);
+        cctx.fillStyle = p.color;
+        cctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        cctx.restore();
+      });
+      if (frames < maxFrames){
+        requestAnimationFrame(tick);
+      } else {
+        confettiCanvas.style.display = "none";
+      }
+    }
+    tick();
+  }
+
+  /* =====================================================================
+     TYPEWRITER EFFECT
+     ===================================================================== */
+  function typewrite(el, text, speed){
+    el.textContent = "";
+    let i = 0;
+    speed = speed || 55;
+    return new Promise(resolve => {
+      function step(){
+        if (i <= text.length){
+          el.textContent = text.slice(0, i);
+          i++;
+          setTimeout(step, speed);
+        } else {
+          resolve();
+        }
+      }
+      step();
+    });
+  }
+
+  /* =====================================================================
+     RUNAWAY "NO" BUTTON LOGIC
+     Works for both mouse (desktop) and touch (mobile).
+     ===================================================================== */
+  const TAUNTS = [
+    "Nice try 😜",
+    "You can't escape love ❤️",
+    "Click Yes instead 😊",
+    "Not so fast! 😆",
+    "Keep trying... or don't 😏",
+    "Love always wins 💘"
+  ];
+
+  function setupRunawayButton(noBtnId, yesBtnId){
+    const noBtn = document.getElementById(noBtnId);
+    let attempts = 0;
+    let isRunning = false;
+
+    function randomPositionAwayFrom(x, y){
+      const margin = 20;
+      const btnW = noBtn.offsetWidth || 120;
+      const btnH = noBtn.offsetHeight || 54;
+      const maxX = window.innerWidth - btnW - margin;
+      const maxY = window.innerHeight - btnH - margin;
+      let newX, newY, dist;
+      let tries = 0;
+      do {
+        newX = margin + Math.random() * Math.max(1, (maxX - margin));
+        newY = margin + Math.random() * Math.max(1, (maxY - margin));
+        dist = Math.hypot(newX - x, newY - y);
+        tries++;
+      } while (dist < 120 && tries < 10);
+      return { x: newX, y: newY };
+    }
+
+    function showTaunt(){
+      const msg = TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
+      const bubble = document.createElement("div");
+      bubble.className = "taunt";
+      bubble.textContent = msg;
+      const rect = noBtn.getBoundingClientRect();
+      bubble.style.left = Math.max(10, rect.left) + "px";
+      bubble.style.top = Math.max(10, rect.top - 46) + "px";
+      document.body.appendChild(bubble);
+      setTimeout(() => bubble.remove(), 1600);
+    }
+
+    function runAway(clientX, clientY){
+      attempts++;
+      if (!isRunning){
+        // Convert from static, in-flow position to fixed positioning
+        const rect = noBtn.getBoundingClientRect();
+        noBtn.style.left = rect.left + "px";
+        noBtn.style.top = rect.top + "px";
+        noBtn.classList.add("runaway");
+        isRunning = true;
+      }
+      const from = { x: clientX, y: clientY };
+      const pos = randomPositionAwayFrom(from.x, from.y);
+      noBtn.style.left = pos.x + "px";
+      noBtn.style.top = pos.y + "px";
+
+      // Funny taunt every few attempts
+      if (attempts % 3 === 0){
+        showTaunt();
+      }
+    }
+
+    // Desktop: move away on hover/mouseover (before click even lands)
+    noBtn.addEventListener("mouseenter", (e) => {
+      runAway(e.clientX, e.clientY);
+    });
+
+    // Desktop/mobile: also dodge on direct click/touch attempts that land
+    noBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      runAway(e.clientX, e.clientY);
+    });
+
+    // Mobile: dodge as soon as a touch starts near/on the button
+    noBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      runAway(touch.clientX, touch.clientY);
+    }, { passive:false });
+
+    // Also dodge if a touch/mouse simply moves near the button (extra evasive)
+    document.addEventListener("mousemove", (e) => {
+      if (!isRunning) return;
+      const rect = noBtn.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width/2);
+      const dy = e.clientY - (rect.top + rect.height/2);
+      const dist = Math.hypot(dx, dy);
+      if (dist < 90){
+        runAway(e.clientX, e.clientY);
+      }
+    });
+  }
+
+  setupRunawayButton("noBtn1", "yesBtn1");
+  setupRunawayButton("noBtn2", "yesBtn2");
+
+  /* =====================================================================
+     CLICK SOUND EFFECT HELPER
+     ===================================================================== */
+  const clickSound = document.getElementById("clickSound");
+  function playClickSound(){
+    try{
+      clickSound.currentTime = 0;
+      clickSound.play().catch(()=>{ /* autoplay restrictions — ignore */ });
+    }catch(e){ /* no-op */ }
+  }
+
+  /* =====================================================================
+     BACKGROUND MUSIC TOGGLE
+     ===================================================================== */
+  const bgMusic = document.getElementById("bgMusic");
+  const musicToggle = document.getElementById("musicToggle");
+  let musicPlaying = false;
+
+  musicToggle.addEventListener("click", () => {
+    if (musicPlaying){
+      bgMusic.pause();
+      musicToggle.textContent = "🔇";
+    } else {
+      bgMusic.play().catch(()=>{ /* ignore autoplay block */ });
+      musicToggle.textContent = "🔊";
+    }
+    musicPlaying = !musicPlaying;
+  });
+
+  /* =====================================================================
+     PAGE 1 — "YES" HANDLER
+     ===================================================================== */
+  document.getElementById("yesBtn1").addEventListener("click", () => {
+    playClickSound();
+    showScreen("page1success");
+    const el = document.getElementById("typewriter1");
+    typewrite(el, "I knew you love me! ❤️🥰", 60);
+  });
+
+  document.getElementById("toPage2Btn").addEventListener("click", () => {
+    playClickSound();
+    showScreen("page2");
+  });
+
+  /* =====================================================================
+     PAGE 2 — "YES" HANDLER -> SHOW FORM
+     ===================================================================== */
+  document.getElementById("yesBtn2").addEventListener("click", () => {
+    playClickSound();
+    showScreen("page3");
+  });
+
+  /* =====================================================================
+     FORM VALIDATION + FIRESTORE SUBMISSION
+     ===================================================================== */
+  const dateForm = document.getElementById("dateForm");
+  const submitBtn = document.getElementById("submitBtn");
+  const formStatus = document.getElementById("formStatus");
+
+  function clearErrors(){
+    ["fName","fDate","fTime","fPlace"].forEach(id => {
+      document.getElementById("err-" + id).textContent = "";
+    });
+    formStatus.textContent = "";
+    formStatus.className = "status-msg";
+  }
+
+  function validateForm(data){
+    let valid = true;
+    if (!data.name || data.name.trim().length < 2){
+      document.getElementById("err-fName").textContent = "Please enter your name.";
+      valid = false;
+    }
+    if (!data.date){
+      document.getElementById("err-fDate").textContent = "Please choose a date.";
+      valid = false;
+    }
+    if (!data.time){
+      document.getElementById("err-fTime").textContent = "Please choose a time.";
+      valid = false;
+    }
+    if (!data.place || data.place.trim().length < 2){
+      document.getElementById("err-fPlace").textContent = "Please enter a meeting place.";
+      valid = false;
+    }
+    return valid;
+  }
+
+  function detectDeviceType(){
+    const ua = navigator.userAgent;
+    if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) return "Mobile";
+    return "Desktop";
+  }
+
+  dateForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearErrors();
+
+    const data = {
+      name: document.getElementById("fName").value,
+      date: document.getElementById("fDate").value,
+      time: document.getElementById("fTime").value,
+      place: document.getElementById("fPlace").value,
+      message: document.getElementById("fMessage").value
+    };
+
+    if (!validateForm(data)){
+      formStatus.textContent = "Please fix the highlighted fields.";
+      formStatus.className = "status-msg error";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Sending... 💌";
+
+    const payload = {
+      name: data.name.trim(),
+      date: data.date,
+      time: data.time,
+      place: data.place.trim(),
+      message: data.message.trim(),
+      browser: navigator.userAgent,
+      deviceType: detectDeviceType(),
+      timestamp: (db && firebase.firestore.FieldValue)
+        ? firebase.firestore.FieldValue.serverTimestamp()
+        : new Date().toISOString()
+    };
+
+    try{
+      if (db){
+        await db.collection("dateResponses").add(payload);
+      } else {
+        // Firebase not configured — log locally so nothing is lost during testing.
+        console.log("Firebase not configured. Form payload:", payload);
+      }
+      formStatus.textContent = "Sent! 🎉";
+      formStatus.className = "status-msg success";
+      playClickSound();
+
+      setTimeout(() => {
+        heartsBurstMode = true;
+        showScreen("pageFinal");
+        launchConfetti();
+      }, 500);
+
+    } catch(err){
+      console.error("Error saving to Firestore:", err);
+      // Show the real Firebase error (code + message) instead of a generic
+      // message, so the actual cause (rules, API key, missing DB, etc.)
+      // is visible without needing to open dev tools.
+      const code = err.code ? err.code + ": " : "";
+      formStatus.textContent = "Error — " + code + (err.message || "Something went wrong.");
+      formStatus.className = "status-msg error";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Send 💌";
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>
